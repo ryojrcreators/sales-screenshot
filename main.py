@@ -4,14 +4,17 @@ from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 # ===== 設定（環境変数から読み込み） =====
-LOGIN_URL = "https://app.jrcreators.com/"
-SALES_URL = "https://app.jrcreators.com/sales/report"
+DOMAIN = "app.jrcreators.com"
 
-# 1枚目のログイン情報
+# 1枚目：Basic認証
 LOGIN_ID_1 = os.environ["LOGIN_ID_1"]
 LOGIN_PASS_1 = os.environ["LOGIN_PASS_1"]
 
-# 2枚目のログイン情報
+# Basic認証をURLに埋め込む
+LOGIN_URL = f"https://{LOGIN_ID_1}:{LOGIN_PASS_1}@{DOMAIN}/"
+SALES_URL = f"https://{LOGIN_ID_1}:{LOGIN_PASS_1}@{DOMAIN}/sales/report"
+
+# 2枚目：フォームログイン
 LOGIN_ID_2 = os.environ["LOGIN_ID_2"]
 LOGIN_PASS_2 = os.environ["LOGIN_PASS_2"]
 
@@ -30,40 +33,25 @@ def take_screenshot():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 900})
 
-        # ===== ステップ1：1枚目のログイン =====
-        print("1枚目のログイン画面を開いています...")
+        # ===== ステップ1：Basic認証（URLに埋め込み） =====
+        print("Basic認証付きでログインページを開いています...")
         page.goto(LOGIN_URL, wait_until="networkidle")
 
-        # デバッグ用：ページ読み込み直後のスクリーンショット
+        # デバッグ用スクリーンショット
         page.screenshot(path="debug_login.png")
-        print("デバッグ用スクリーンショットを保存しました: debug_login.png")
+        print("デバッグ用スクリーンショットを保存しました")
 
-        # デバッグ用：ページのHTMLを出力
-        html = page.content()
-        print("=== ページHTML（先頭2000文字）===")
-        print(html[:2000])
-        print("=== HTML終了 ===")
-
-        page.fill('input[name="username"]', LOGIN_ID_1)
-        page.fill('input[type="password"]', LOGIN_PASS_1)
-        page.click('button[type="submit"], input[type="submit"]')
-        page.wait_for_load_state("networkidle")
-        print("1枚目のログイン完了")
-
-        # ===== ステップ2：2枚目のログイン =====
-        print("2枚目のログイン画面を処理しています...")
-
+        # ===== ステップ2：フォームログイン =====
+        print("フォームログインを処理しています...")
         page.fill('input[name="username"]', LOGIN_ID_2)
         page.fill('input[type="password"]', LOGIN_PASS_2)
         page.click('button[type="submit"], input[type="submit"]')
         page.wait_for_load_state("networkidle")
-        print("2枚目のログイン完了")
+        print("フォームログイン完了")
 
         # ===== 売上画面に移動 =====
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
-
-        # 念のため少し待機（グラフ等の描画のため）
         page.wait_for_timeout(2000)
 
         # スクリーンショット撮影
