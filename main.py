@@ -37,7 +37,7 @@ def take_screenshot():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
-        # 解像度を2倍に（device_scale_factor=2）
+        # 解像度2倍・幅広め
         context = browser.new_context(
             viewport={"width": 1600, "height": 900},
             device_scale_factor=2
@@ -66,16 +66,9 @@ def take_screenshot():
         page.goto(SALES_URL, wait_until="networkidle")
         page.wait_for_timeout(2000)
 
-        # ===== 表部分だけスクリーンショット =====
-        print("売上テーブルを探しています...")
-        try:
-            # テーブル要素を探してスクリーンショット
-            table = page.locator("table").first
-            table.screenshot(path=screenshot_path)
-            print("テーブルのスクリーンショットを保存しました")
-        except Exception as e:
-            print(f"テーブル指定失敗、ページ全体を撮ります: {e}")
-            page.screenshot(path=screenshot_path, full_page=True)
+        # ===== ページ全体をスクリーンショット（高解像度） =====
+        page.screenshot(path=screenshot_path, full_page=True)
+        print(f"スクリーンショットを保存しました: {screenshot_path}")
 
         browser.close()
 
