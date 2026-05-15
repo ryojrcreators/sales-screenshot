@@ -36,20 +36,22 @@ def take_screenshot():
     """売上画面のスクリーンショットを撮る"""
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 1440, "height": 900})
 
-        # ===== ステップ1：Basic認証（URLに埋め込み） =====
+        # 解像度を2倍に（device_scale_factor=2）
+        context = browser.new_context(
+            viewport={"width": 1600, "height": 900},
+            device_scale_factor=2
+        )
+        page = context.new_page()
+
+        # ===== ステップ1：Basic認証 =====
         print("Basic認証付きでトップページを開いています...")
         page.goto(LOGIN_URL, wait_until="networkidle")
 
-        # ===== ステップ2：右上の「Login」ボタンをクリック =====
+        # ===== ステップ2：Loginボタンをクリック =====
         print("Loginボタンをクリックしています...")
         page.click('a:has-text("Login"), button:has-text("Login")')
         page.wait_for_load_state("networkidle")
-
-        # デバッグ用スクリーンショット（フォームログイン画面）
-        page.screenshot(path="debug_login.png")
-        print("デバッグ用スクリーンショットを保存しました")
 
         # ===== ステップ3：フォームログイン =====
         print("フォームログインを処理しています...")
@@ -64,9 +66,16 @@ def take_screenshot():
         page.goto(SALES_URL, wait_until="networkidle")
         page.wait_for_timeout(2000)
 
-        # スクリーンショット撮影
-        page.screenshot(path=screenshot_path, full_page=True)
-        print(f"スクリーンショットを保存しました: {screenshot_path}")
+        # ===== 表部分だけスクリーンショット =====
+        print("売上テーブルを探しています...")
+        try:
+            # テーブル要素を探してスクリーンショット
+            table = page.locator("table").first
+            table.screenshot(path=screenshot_path)
+            print("テーブルのスクリーンショットを保存しました")
+        except Exception as e:
+            print(f"テーブル指定失敗、ページ全体を撮ります: {e}")
+            page.screenshot(path=screenshot_path, full_page=True)
 
         browser.close()
 
