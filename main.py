@@ -39,8 +39,9 @@ def take_screenshot():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
+        # 幅1800で色を維持（レスポンシブCSSが崩れないように）
         context = browser.new_context(
-            viewport={"width": 900, "height": 900},
+            viewport={"width": 1800, "height": 900},
             device_scale_factor=2,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
@@ -84,13 +85,16 @@ def take_screenshot():
     img_width, img_height = img.size
     print(f"画像サイズ: {img_width} x {img_height}")
 
-    # 上部カット：フィルター部分を完全にカット
+    # 上下カット（縦方向）
     top_cut = 1020
-    # 下部カット：Amazon Cart Flags直前まで（下から560px分をカット）
     bottom_cut = img_height - 560
 
-    print(f"切り取り範囲: y={top_cut} 〜 y={bottom_cut}")
-    cropped = img.crop((0, top_cut, img_width, bottom_cut))
+    # 左右カット（横方向）：表は左端から約1320px（device_scale_factor=2）
+    left_cut = 0
+    right_cut = 1320
+
+    print(f"切り取り範囲: x={left_cut}〜{right_cut}, y={top_cut}〜{bottom_cut}")
+    cropped = img.crop((left_cut, top_cut, right_cut, bottom_cut))
     cropped.save(screenshot_path)
     print(f"切り取り完了: {screenshot_path} ({cropped.size[0]}x{cropped.size[1]}px)")
 
