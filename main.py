@@ -1,6 +1,7 @@
 import os
 import requests
 from datetime import datetime
+from urllib.parse import quote
 from playwright.sync_api import sync_playwright
 
 # ===== 設定（環境変数から読み込み） =====
@@ -10,9 +11,13 @@ DOMAIN = "app.jrcreators.com"
 LOGIN_ID_1 = os.environ["LOGIN_ID_1"]
 LOGIN_PASS_1 = os.environ["LOGIN_PASS_1"]
 
+# 特殊文字をURLエンコード（#や@などを安全な形式に変換）
+LOGIN_ID_1_ENC = quote(LOGIN_ID_1, safe="")
+LOGIN_PASS_1_ENC = quote(LOGIN_PASS_1, safe="")
+
 # Basic認証をURLに埋め込む
-LOGIN_URL = f"https://{LOGIN_ID_1}:{LOGIN_PASS_1}@{DOMAIN}/"
-SALES_URL = f"https://{LOGIN_ID_1}:{LOGIN_PASS_1}@{DOMAIN}/sales/report"
+LOGIN_URL = f"https://{LOGIN_ID_1_ENC}:{LOGIN_PASS_1_ENC}@{DOMAIN}/"
+SALES_URL = f"https://{LOGIN_ID_1_ENC}:{LOGIN_PASS_1_ENC}@{DOMAIN}/sales/report"
 
 # 2枚目：フォームログイン
 LOGIN_ID_2 = os.environ["LOGIN_ID_2"]
