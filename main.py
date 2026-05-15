@@ -39,7 +39,6 @@ def take_screenshot():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
-        # 通常のChromeに偽装・幅を表に合わせて最適化
         context = browser.new_context(
             viewport={"width": 900, "height": 900},
             device_scale_factor=2,
@@ -68,7 +67,6 @@ def take_screenshot():
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
 
-        # JavaScriptによる色付けが完了するまで待つ
         try:
             page.wait_for_function("document.querySelectorAll('table tr').length > 5")
         except Exception:
@@ -86,10 +84,8 @@ def take_screenshot():
     img_width, img_height = img.size
     print(f"画像サイズ: {img_width} x {img_height}")
 
-    # 上部（ナビ＋フィルター）をカット、下部（Amazon Cart Flags以降）をカット
-    # device_scale_factor=2なので実際のpxの2倍の値を指定
-    top_cut = 880      # フィルター部分を完全にカット
-    bottom_cut = img_height - 560  # Amazon Cart Flags以降をカット
+    top_cut = 880       # フィルター部分を完全にカット
+    bottom_cut = img_height - 1100  # Amazon Cart Flags以降をカット
 
     cropped = img.crop((0, top_cut, img_width, bottom_cut))
     cropped.save(screenshot_path)
