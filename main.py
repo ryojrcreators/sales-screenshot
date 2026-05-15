@@ -3,7 +3,6 @@ import requests
 from datetime import datetime
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright
-from PIL import Image
 
 # ===== 設定（環境変数から読み込み） =====
 DOMAIN = "app.jrcreators.com"
@@ -30,7 +29,6 @@ CW_ROOM_ID = os.environ["CW_ROOM_ID"]
 
 # ===== スクリーンショット保存パス =====
 today = datetime.now().strftime("%Y-%m-%d")
-full_page_path = f"full_page_{today}.png"
 screenshot_path = f"screenshot_{today}.png"
 
 
@@ -73,26 +71,24 @@ def take_screenshot():
             pass
         page.wait_for_timeout(5000)
 
-        # ページ全体を撮影
-        page.screenshot(path=full_page_path, full_page=True)
-        print(f"ページ全体のスクリーンショットを保存しました: {full_page_path}")
+        # ページの高さを取得
+        page_height = page.evaluate("document.body.scrollHeight")
+        print(f"ページ高さ: {page_height}px")
+
+        # clipで表部分だけ撮影（device_scale_factor=2なので座標は実際の半分）
+        # viewport=1800px、表の幅は約660px、上部カット約440px、下部カット約380px
+        page.screenshot(
+            path=screenshot_path,
+            clip={
+                "x": 0,
+                "y": 440,           # フィルター部分をカット
+                "width": 680,       # 表の幅
+                "height": page_height - 440 - 380  # 表の高さ（下部カット）
+            }
+        )
+        print(f"スクリーンショットを保存しました: {screenshot_path}")
 
         browser.close()
-
-    # ===== PILで表部分を切り取り =====
-    img = Image.open(full_page_path)
-    img_width, img_height = img.size
-    print(f"画像サイズ: {img_width} x {img_height}")
-
-    top_cut = 880                  # 表のヘッダー直前から
-    bottom_cut = img_height - 760  # Amazon Cart Flags直前まで
-    left_cut = 0
-    right_cut = 1360               # 表の右端まで
-
-    print(f"切り取り範囲: x={left_cut}~{right_cut}, y={top_cut}~{bottom_cut}")
-    cropped = img.crop((left_cut, top_cut, right_cut, bottom_cut))
-    cropped.save(screenshot_path)
-    print(f"切り取り完了: {screenshot_path} ({cropped.size[0]}x{cropped.size[1]}px)")
 
 
 def send_to_chatwork():
