@@ -11,7 +11,7 @@ DOMAIN = "app.jrcreators.com"
 LOGIN_ID_1 = os.environ["LOGIN_ID_1"]
 LOGIN_PASS_1 = os.environ["LOGIN_PASS_1"]
 
-# 特殊文字をURLエンコード（#や@などを安全な形式に変換）
+# 特殊文字をURLエンコード
 LOGIN_ID_1_ENC = quote(LOGIN_ID_1, safe="")
 LOGIN_PASS_1_ENC = quote(LOGIN_PASS_1, safe="")
 
@@ -39,14 +39,19 @@ def take_screenshot():
         page = browser.new_page(viewport={"width": 1440, "height": 900})
 
         # ===== ステップ1：Basic認証（URLに埋め込み） =====
-        print("Basic認証付きでログインページを開いています...")
+        print("Basic認証付きでトップページを開いています...")
         page.goto(LOGIN_URL, wait_until="networkidle")
 
-        # デバッグ用スクリーンショット
+        # ===== ステップ2：右上の「Login」ボタンをクリック =====
+        print("Loginボタンをクリックしています...")
+        page.click('a:has-text("Login"), button:has-text("Login")')
+        page.wait_for_load_state("networkidle")
+
+        # デバッグ用スクリーンショット（フォームログイン画面）
         page.screenshot(path="debug_login.png")
         print("デバッグ用スクリーンショットを保存しました")
 
-        # ===== ステップ2：フォームログイン =====
+        # ===== ステップ3：フォームログイン =====
         print("フォームログインを処理しています...")
         page.fill('input[name="username"]', LOGIN_ID_2)
         page.fill('input[type="password"]', LOGIN_PASS_2)
