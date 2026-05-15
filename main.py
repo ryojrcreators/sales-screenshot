@@ -63,11 +63,37 @@ def take_screenshot():
         # ===== 売上画面に移動 =====
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
-        page.wait_for_timeout(2000)
 
-        # ページ全体をスクリーンショット
-        page.screenshot(path=screenshot_path, full_page=True)
-        print(f"スクリーンショットを保存しました: {screenshot_path}")
+        # CSSが完全に適用されるまで待つ
+        page.wait_for_timeout(5000)
+
+        # ===== テーブルの座標を取得して切り取り =====
+        print("テーブルの位置を取得しています...")
+        try:
+            # テーブル要素のbounding boxを取得
+            table = page.locator("table").first
+            bbox = table.bounding_box()
+
+            if bbox:
+                print(f"テーブル座標: {bbox}")
+                # 座標を使ってスクリーンショット（余白を少し追加）
+                page.screenshot(
+                    path=screenshot_path,
+                    clip={
+                        "x": max(0, bbox["x"] - 10),
+                        "y": max(0, bbox["y"] - 10),
+                        "width": bbox["width"] + 20,
+                        "height": bbox["height"] + 20
+                    }
+                )
+                print("テーブル部分のスクリーンショットを保存しました")
+            else:
+                print("テーブルが見つからないためページ全体を撮ります")
+                page.screenshot(path=screenshot_path, full_page=True)
+
+        except Exception as e:
+            print(f"エラー発生、ページ全体を撮ります: {e}")
+            page.screenshot(path=screenshot_path, full_page=True)
 
         browser.close()
 
