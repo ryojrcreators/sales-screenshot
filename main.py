@@ -6,10 +6,18 @@ from playwright.sync_api import sync_playwright
 # ===== 設定（環境変数から読み込み） =====
 LOGIN_URL = "https://app.jrcreators.com/"
 SALES_URL = "https://app.jrcreators.com/sales/report"
-LOGIN_ID = os.environ["LOGIN_ID"]
-LOGIN_PASS = os.environ["LOGIN_PASS"]
+
+# 1枚目のログイン情報
+LOGIN_ID_1 = os.environ["LOGIN_ID_1"]
+LOGIN_PASS_1 = os.environ["LOGIN_PASS_1"]
+
+# 2枚目のログイン情報
+LOGIN_ID_2 = os.environ["LOGIN_ID_2"]
+LOGIN_PASS_2 = os.environ["LOGIN_PASS_2"]
+
+# Chatwork
 CW_TOKEN = os.environ["CW_TOKEN"]
-CW_ROOM_ID = os.environ["CW_ROOM_ID"]  # My Chatの場合は自分のアカウントIDを使用
+CW_ROOM_ID = os.environ["CW_ROOM_ID"]
 
 # ===== スクリーンショット保存パス =====
 today = datetime.now().strftime("%Y-%m-%d")
@@ -22,24 +30,36 @@ def take_screenshot():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 900})
 
-        print("ログインページを開いています...")
+        # ===== ステップ1：1枚目のログイン =====
+        print("1枚目のログイン画面を開いています...")
         page.goto(LOGIN_URL, wait_until="networkidle")
 
-        # ログインフォームに入力
-        # ※ フィールド名が合わない場合は以下を調整してください
         try:
-            # パターン1: email/password型
-            page.fill('input[type="email"], input[name="email"], input[name="username"], input[name="login_id"]', LOGIN_ID)
-            page.fill('input[type="password"]', LOGIN_PASS)
+            page.fill('input[type="email"], input[name="email"], input[name="username"], input[name="login_id"]', LOGIN_ID_1)
+            page.fill('input[type="password"]', LOGIN_PASS_1)
         except Exception:
-            # パターン2: テキスト型
-            page.fill('input[type="text"]', LOGIN_ID)
-            page.fill('input[type="password"]', LOGIN_PASS)
+            page.fill('input[type="text"]', LOGIN_ID_1)
+            page.fill('input[type="password"]', LOGIN_PASS_1)
 
-        # ログインボタンをクリック
         page.click('button[type="submit"], input[type="submit"]')
         page.wait_for_load_state("networkidle")
+        print("1枚目のログイン完了")
 
+        # ===== ステップ2：2枚目のログイン =====
+        print("2枚目のログイン画面を処理しています...")
+
+        try:
+            page.fill('input[type="email"], input[name="email"], input[name="username"], input[name="login_id"]', LOGIN_ID_2)
+            page.fill('input[type="password"]', LOGIN_PASS_2)
+        except Exception:
+            page.fill('input[type="text"]', LOGIN_ID_2)
+            page.fill('input[type="password"]', LOGIN_PASS_2)
+
+        page.click('button[type="submit"], input[type="submit"]')
+        page.wait_for_load_state("networkidle")
+        print("2枚目のログイン完了")
+
+        # ===== 売上画面に移動 =====
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
 
@@ -57,10 +77,10 @@ def send_to_chatwork():
     """Chatworkにメッセージ＋画像を送信する"""
     message = f"本日の売上\n📅 {today}"
 
-    # メッセージ送信
-    msg_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/messages"
     headers = {"X-ChatWorkToken": CW_TOKEN}
 
+    # メッセージ送信
+    msg_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/messages"
     msg_response = requests.post(
         msg_url,
         headers=headers,
