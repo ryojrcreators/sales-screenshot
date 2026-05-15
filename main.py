@@ -1,8 +1,10 @@
 import os
 import requests
+import shutil
 from datetime import datetime
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright
+from PIL import Image
 
 # ===== 設定（環境変数から読み込み） =====
 DOMAIN = "app.jrcreators.com"
@@ -29,6 +31,7 @@ CW_ROOM_ID = os.environ["CW_ROOM_ID"]
 
 # ===== スクリーンショット保存パス =====
 today = datetime.now().strftime("%Y-%m-%d")
+full_page_path = f"full_page_{today}.png"
 screenshot_path = f"screenshot_{today}.png"
 
 
@@ -37,10 +40,11 @@ def take_screenshot():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
+        # 通常のChromeに偽装
         context = browser.new_context(
             viewport={"width": 1800, "height": 900},
             device_scale_factor=2,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebRight/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
         page = context.new_page()
 
@@ -65,30 +69,26 @@ def take_screenshot():
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
 
+        # JavaScriptによる色付けが完了するまで待つ
         try:
             page.wait_for_function("document.querySelectorAll('table tr').length > 5")
         except Exception:
             pass
         page.wait_for_timeout(5000)
 
-        # ページの高さを取得
-        page_height = page.evaluate("document.body.scrollHeight")
-        print(f"ページ高さ: {page_height}px")
-
-        # clipで表部分だけ撮影（device_scale_factor=2なので座標は実際の半分）
-        # viewport=1800px、表の幅は約660px、上部カット約440px、下部カット約380px
-        page.screenshot(
-            path=screenshot_path,
-            clip={
-                "x": 0,
-                "y": 440,           # フィルター部分をカット
-                "width": 680,       # 表の幅
-                "height": page_height - 440 - 380  # 表の高さ（下部カット）
-            }
-        )
-        print(f"スクリーンショットを保存しました: {screenshot_path}")
+        # ページ全体を撮影
+        page.screenshot(path=full_page_path, full_page=True)
+        print(f"ページ全体のスクリーンショットを保存しました: {full_page_path}")
 
         browser.close()
+
+    # ページ全体をそのまま送信（切り取りなし）
+    img = Image.open(full_page_path)
+    img_width, img_height = img.size
+    print(f"画像サイズ: {img_width} x {img_height}")
+
+    shutil.copy(full_page_path, screenshot_path)
+    print(f"スクリーンショット完了: {screenshot_path}")
 
 
 def send_to_chatwork():
