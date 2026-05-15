@@ -1,6 +1,5 @@
 import os
 import requests
-import shutil
 from datetime import datetime
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright
@@ -44,7 +43,7 @@ def take_screenshot():
         context = browser.new_context(
             viewport={"width": 1800, "height": 900},
             device_scale_factor=2,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebRight/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
         page = context.new_page()
 
@@ -82,11 +81,13 @@ def take_screenshot():
 
         browser.close()
 
-    # ページ全体をそのまま送信（切り取りなし）
+    # ===== PILで表部分を切り取り =====
     img = Image.open(full_page_path)
     img_width, img_height = img.size
     print(f"画像サイズ: {img_width} x {img_height}")
 
+    # ページ全体をそのまま送信（切り取りなし）
+    import shutil
     shutil.copy(full_page_path, screenshot_path)
     print(f"スクリーンショット完了: {screenshot_path}")
 
