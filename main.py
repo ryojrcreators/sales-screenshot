@@ -39,9 +39,11 @@ def take_screenshot():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
+        # 通常のChromeに偽装
         context = browser.new_context(
             viewport={"width": 1800, "height": 900},
-            device_scale_factor=2
+            device_scale_factor=2,
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
         page = context.new_page()
 
@@ -65,16 +67,17 @@ def take_screenshot():
         # ===== 売上画面に移動 =====
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
+
+        # JavaScriptによる色付けが完了するまで待つ
+        try:
+            page.wait_for_function("document.querySelectorAll('table tr').length > 5")
+        except Exception:
+            pass
         page.wait_for_timeout(5000)
 
-        # ページ全体をまず撮影
+        # ページ全体を撮影
         page.screenshot(path=full_page_path, full_page=True)
         print(f"ページ全体のスクリーンショットを保存しました: {full_page_path}")
-
-        # ページの全高さを取得
-        height = page.evaluate("document.body.scrollHeight")
-        width = page.evaluate("document.body.scrollWidth")
-        print(f"ページサイズ: {width} x {height}")
 
         browser.close()
 
@@ -83,13 +86,9 @@ def take_screenshot():
     img_width, img_height = img.size
     print(f"画像サイズ: {img_width} x {img_height}")
 
-    # device_scale_factor=2なので座標は2倍
-    # ナビゲーションバー・日付フィルター部分をスキップして表だけ切り取る
-    # 上部（ナビ＋フィルター）をカット：上から約320px分をスキップ（実座標×2）
-    top_cut = 320 * 2
-    # 下部のAmazon Cart Flagsセクションは含めない
-    # 表の終わりを下から約280px分をカット
-    bottom_cut = img_height - (280 * 2)
+    # 上部（ナビ＋フィルター部分）をカット、下部もカット
+    top_cut = 580
+    bottom_cut = img_height - 560
 
     cropped = img.crop((0, top_cut, img_width, bottom_cut))
     cropped.save(screenshot_path)
