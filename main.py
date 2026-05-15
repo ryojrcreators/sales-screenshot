@@ -1,6 +1,5 @@
 import os
 import requests
-import shutil
 from datetime import datetime
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright
@@ -85,10 +84,10 @@ def take_screenshot():
     img_width, img_height = img.size
     print(f"画像サイズ: {img_width} x {img_height}")
 
-    top_cut = 1020               # フィルター部分をカット
-    bottom_cut = img_height - 560  # Amazon Cart Flags以降をカット
+    top_cut = 880                  # 表のヘッダー直前から
+    bottom_cut = img_height - 760  # Amazon Cart Flags直前まで
     left_cut = 0
-    right_cut = 1320             # 表の右端まで
+    right_cut = 1360               # 表の右端まで
 
     print(f"切り取り範囲: x={left_cut}~{right_cut}, y={top_cut}~{bottom_cut}")
     cropped = img.crop((left_cut, top_cut, right_cut, bottom_cut))
