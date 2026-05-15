@@ -34,6 +34,16 @@ def take_screenshot():
         print("1枚目のログイン画面を開いています...")
         page.goto(LOGIN_URL, wait_until="networkidle")
 
+        # デバッグ用：ページ読み込み直後のスクリーンショット
+        page.screenshot(path="debug_login.png")
+        print("デバッグ用スクリーンショットを保存しました: debug_login.png")
+
+        # デバッグ用：ページのHTMLを出力
+        html = page.content()
+        print("=== ページHTML（先頭2000文字）===")
+        print(html[:2000])
+        print("=== HTML終了 ===")
+
         page.fill('input[name="username"]', LOGIN_ID_1)
         page.fill('input[type="password"]', LOGIN_PASS_1)
         page.click('button[type="submit"], input[type="submit"]')
