@@ -3,6 +3,7 @@ import requests
 from datetime import datetime
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright
+from PIL import Image
 
 # ===== 設定（環境変数から読み込み） =====
 DOMAIN = "app.jrcreators.com"
@@ -29,6 +30,7 @@ CW_ROOM_ID = os.environ["CW_ROOM_ID"]
 
 # ===== スクリーンショット保存パス =====
 today = datetime.now().strftime("%Y-%m-%d")
+full_page_path = f"full_page_{today}.png"
 screenshot_path = f"screenshot_{today}.png"
 
 
@@ -63,39 +65,35 @@ def take_screenshot():
         # ===== 売上画面に移動 =====
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
-
-        # CSSが完全に適用されるまで待つ
         page.wait_for_timeout(5000)
 
-        # ===== テーブルの座標を取得して切り取り =====
-        print("テーブルの位置を取得しています...")
-        try:
-            # テーブル要素のbounding boxを取得
-            table = page.locator("table").first
-            bbox = table.bounding_box()
+        # ページ全体をまず撮影
+        page.screenshot(path=full_page_path, full_page=True)
+        print(f"ページ全体のスクリーンショットを保存しました: {full_page_path}")
 
-            if bbox:
-                print(f"テーブル座標: {bbox}")
-                # 座標を使ってスクリーンショット（余白を少し追加）
-                page.screenshot(
-                    path=screenshot_path,
-                    clip={
-                        "x": max(0, bbox["x"] - 10),
-                        "y": max(0, bbox["y"] - 10),
-                        "width": bbox["width"] + 20,
-                        "height": bbox["height"] + 20
-                    }
-                )
-                print("テーブル部分のスクリーンショットを保存しました")
-            else:
-                print("テーブルが見つからないためページ全体を撮ります")
-                page.screenshot(path=screenshot_path, full_page=True)
-
-        except Exception as e:
-            print(f"エラー発生、ページ全体を撮ります: {e}")
-            page.screenshot(path=screenshot_path, full_page=True)
+        # ページの全高さを取得
+        height = page.evaluate("document.body.scrollHeight")
+        width = page.evaluate("document.body.scrollWidth")
+        print(f"ページサイズ: {width} x {height}")
 
         browser.close()
+
+    # ===== PILで表部分を切り取り =====
+    img = Image.open(full_page_path)
+    img_width, img_height = img.size
+    print(f"画像サイズ: {img_width} x {img_height}")
+
+    # device_scale_factor=2なので座標は2倍
+    # ナビゲーションバー・日付フィルター部分をスキップして表だけ切り取る
+    # 上部（ナビ＋フィルター）をカット：上から約320px分をスキップ（実座標×2）
+    top_cut = 320 * 2
+    # 下部のAmazon Cart Flagsセクションは含めない
+    # 表の終わりを下から約280px分をカット
+    bottom_cut = img_height - (280 * 2)
+
+    cropped = img.crop((0, top_cut, img_width, bottom_cut))
+    cropped.save(screenshot_path)
+    print(f"切り取り完了: {screenshot_path}")
 
 
 def send_to_chatwork():
