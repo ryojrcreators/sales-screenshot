@@ -84,9 +84,12 @@ def take_screenshot():
     img_width, img_height = img.size
     print(f"画像サイズ: {img_width} x {img_height}")
 
-    top_cut = 880       # フィルター部分を完全にカット
-    bottom_cut = img_height - 1100  # Amazon Cart Flags以降をカット
+    # top_cut: 上から何pxをカットするか
+    # bottom_cut: 上からどこまでを残すか（絶対値で指定）
+    top_cut = 880
+    bottom_cut = img_height - 1400  # 下から1400pxをカット
 
+    print(f"切り取り範囲: y={top_cut} 〜 y={bottom_cut}")
     cropped = img.crop((0, top_cut, img_width, bottom_cut))
     cropped.save(screenshot_path)
     print(f"切り取り完了: {screenshot_path} ({cropped.size[0]}x{cropped.size[1]}px)")
