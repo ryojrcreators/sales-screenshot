@@ -37,7 +37,6 @@ def take_screenshot():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
-        # 解像度2倍・幅広め
         context = browser.new_context(
             viewport={"width": 1800, "height": 900},
             device_scale_factor=2
@@ -66,19 +65,9 @@ def take_screenshot():
         page.goto(SALES_URL, wait_until="networkidle")
         page.wait_for_timeout(2000)
 
-        # ===== 表部分だけスクリーンショット =====
-        print("売上テーブルを探しています...")
-        try:
-            # Daily Revenue of Orders のセクションを取得
-            section = page.locator("h3:has-text('Daily Revenue'), h2:has-text('Daily Revenue'), .daily-revenue, #daily-revenue").first
-            if section.count() == 0:
-                # セクション見つからない場合はテーブルを直接取得
-                section = page.locator("table").nth(0)
-            section.screenshot(path=screenshot_path)
-            print("テーブルセクションのスクリーンショットを保存しました")
-        except Exception as e:
-            print(f"テーブル指定失敗、ページ全体を撮ります: {e}")
-            page.screenshot(path=screenshot_path, full_page=True)
+        # ページ全体をスクリーンショット
+        page.screenshot(path=screenshot_path, full_page=True)
+        print(f"スクリーンショットを保存しました: {screenshot_path}")
 
         browser.close()
 
