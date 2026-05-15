@@ -34,13 +34,8 @@ def take_screenshot():
         print("1枚目のログイン画面を開いています...")
         page.goto(LOGIN_URL, wait_until="networkidle")
 
-        try:
-            page.fill('input[type="email"], input[name="email"], input[name="username"], input[name="login_id"]', LOGIN_ID_1)
-            page.fill('input[type="password"]', LOGIN_PASS_1)
-        except Exception:
-            page.fill('input[type="text"]', LOGIN_ID_1)
-            page.fill('input[type="password"]', LOGIN_PASS_1)
-
+        page.fill('input[name="username"]', LOGIN_ID_1)
+        page.fill('input[type="password"]', LOGIN_PASS_1)
         page.click('button[type="submit"], input[type="submit"]')
         page.wait_for_load_state("networkidle")
         print("1枚目のログイン完了")
@@ -48,13 +43,8 @@ def take_screenshot():
         # ===== ステップ2：2枚目のログイン =====
         print("2枚目のログイン画面を処理しています...")
 
-        try:
-            page.fill('input[type="email"], input[name="email"], input[name="username"], input[name="login_id"]', LOGIN_ID_2)
-            page.fill('input[type="password"]', LOGIN_PASS_2)
-        except Exception:
-            page.fill('input[type="text"]', LOGIN_ID_2)
-            page.fill('input[type="password"]', LOGIN_PASS_2)
-
+        page.fill('input[name="username"]', LOGIN_ID_2)
+        page.fill('input[type="password"]', LOGIN_PASS_2)
         page.click('button[type="submit"], input[type="submit"]')
         page.wait_for_load_state("networkidle")
         print("2枚目のログイン完了")
