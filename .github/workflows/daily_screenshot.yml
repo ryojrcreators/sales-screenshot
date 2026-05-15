@@ -1,0 +1,34 @@
+name: 毎朝売上スクリーンショット送信
+
+on:
+  schedule:
+    # LA時間（PDT）の朝10時 = UTC 17:00
+    - cron: '0 17 * * *'
+  workflow_dispatch:  # 手動実行ボタン（テスト用）
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: ライブラリをインストール
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: スクリーンショット撮影 & Chatwork送信
+        env:
+          LOGIN_ID: ${{ secrets.LOGIN_ID }}
+          LOGIN_PASS: ${{ secrets.LOGIN_PASS }}
+          CW_TOKEN: ${{ secrets.CW_TOKEN }}
+          CW_ROOM_ID: ${{ secrets.CW_ROOM_ID }}
+        run: python main.py
