@@ -39,9 +39,9 @@ def take_screenshot():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
-        # 通常のChromeに偽装
+        # 通常のChromeに偽装・幅を表に合わせて最適化
         context = browser.new_context(
-            viewport={"width": 1800, "height": 900},
+            viewport={"width": 900, "height": 900},
             device_scale_factor=2,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
@@ -86,13 +86,14 @@ def take_screenshot():
     img_width, img_height = img.size
     print(f"画像サイズ: {img_width} x {img_height}")
 
-    # 上部（ナビ＋フィルター部分）をカット、下部もカット
-    top_cut = 580
-    bottom_cut = img_height - 560
+    # 上部（ナビ＋フィルター）をカット、下部（Amazon Cart Flags以降）をカット
+    # device_scale_factor=2なので実際のpxの2倍の値を指定
+    top_cut = 880      # フィルター部分を完全にカット
+    bottom_cut = img_height - 560  # Amazon Cart Flags以降をカット
 
     cropped = img.crop((0, top_cut, img_width, bottom_cut))
     cropped.save(screenshot_path)
-    print(f"切り取り完了: {screenshot_path}")
+    print(f"切り取り完了: {screenshot_path} ({cropped.size[0]}x{cropped.size[1]}px)")
 
 
 def send_to_chatwork():
