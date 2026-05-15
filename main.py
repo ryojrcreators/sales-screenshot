@@ -1,5 +1,6 @@
 import os
 import requests
+import shutil
 from datetime import datetime
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright
@@ -39,7 +40,6 @@ def take_screenshot():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
-        # 通常のChromeに偽装
         context = browser.new_context(
             viewport={"width": 1800, "height": 900},
             device_scale_factor=2,
@@ -68,7 +68,6 @@ def take_screenshot():
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
 
-        # JavaScriptによる色付けが完了するまで待つ
         try:
             page.wait_for_function("document.querySelectorAll('table tr').length > 5")
         except Exception:
@@ -86,10 +85,15 @@ def take_screenshot():
     img_width, img_height = img.size
     print(f"画像サイズ: {img_width} x {img_height}")
 
-    # ページ全体をそのまま送信（切り取りなし）
-    import shutil
-    shutil.copy(full_page_path, screenshot_path)
-    print(f"スクリーンショット完了: {screenshot_path}")
+    top_cut = 1020               # フィルター部分をカット
+    bottom_cut = img_height - 560  # Amazon Cart Flags以降をカット
+    left_cut = 0
+    right_cut = 1320             # 表の右端まで
+
+    print(f"切り取り範囲: x={left_cut}~{right_cut}, y={top_cut}~{bottom_cut}")
+    cropped = img.crop((left_cut, top_cut, right_cut, bottom_cut))
+    cropped.save(screenshot_path)
+    print(f"切り取り完了: {screenshot_path} ({cropped.size[0]}x{cropped.size[1]}px)")
 
 
 def send_to_chatwork():
