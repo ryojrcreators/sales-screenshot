@@ -1,18 +1,12 @@
 import os
-import re
 import requests
 from datetime import datetime
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync
 from PIL import Image
 
 # ===== 設定（環境変数から読み込み） =====
 DOMAIN = "app.jrcreators.com"
-
-# Amazon配送チェック設定
-AMAZON_ASIN = "B0CK55YG5W"
-AMAZON_TARGET_SELLERS = ["Shop LA!", "カリフォルニアマート"]
 
 # 1枚目：Basic認証
 LOGIN_ID_1 = os.environ["LOGIN_ID_1"]
@@ -37,14 +31,6 @@ today = datetime.now().strftime("%Y-%m-%d")
 screenshot_path = f"screenshot_{today}.png"
 
 DEVICE_SCALE_FACTOR = 2
-
-MONTHS = {
-    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
-    "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12,
-    "January": 1, "February": 2, "March": 3, "April": 4, "June": 6,
-    "July": 7, "August": 8, "September": 9, "October": 10,
-    "November": 11, "December": 12,
-}
 
 
 def take_screenshot():
@@ -171,149 +157,9 @@ def _crop_table(full_path: str, box: dict | None) -> None:
         print("テーブルが見つからなかったためページ全体を使用します")
 
 
-def check_amazon_delivery() -> dict:
-    """Amazon出品一覧からShop LA!とカリフォルニアマートの配送予定日テキストを返す"""
-    result = {seller: None for seller in AMAZON_TARGET_SELLERS}
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--force-color-profile=srgb"],
-        )
-        context = browser.new_context(
-            viewport={"width": 1280, "height": 1024},
-            device_scale_factor=DEVICE_SCALE_FACTOR,
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
-            extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
-        )
-        page = context.new_page()
-        stealth_sync(page)
-
-        url = f"https://www.amazon.com/dp/{AMAZON_ASIN}"
-        print(f"Amazon商品ページを開いています: {url}")
-        try:
-            page.goto(url, wait_until="networkidle", timeout=30000)
-        except Exception as e:
-            print(f"ページ読み込みエラー: {e}")
-        page.wait_for_timeout(2000)
-
-        print(f"  ページタイトル: {page.title()}")
-        print(f"  URL: {page.url}")
-
-        # 「See all buying options」ボタンをクリックしてオファー一覧を開く
-        try:
-            btn = page.locator("a:has-text('See all buying options'), a:has-text('buying options'), span:has-text('buying options')").first
-            if btn.count() > 0:
-                btn.click()
-                page.wait_for_timeout(2000)
-                print("  buying optionsパネルを開きました")
-        except Exception as e:
-            print(f"  buying optionsボタン操作エラー: {e}")
-
-        page.screenshot(path=f"amazon_debug_{today}.png", full_page=True)
-
-        # AODパネル内のオファーブロックを検索
-        found_blocks = False
-        for selector in ["#aod-offer", "[id^='aod-offer-']", "div.aod-offer", "#aod-offer-list"]:
-            blocks = page.locator(selector).all()
-            if blocks:
-                print(f"セレクタ '{selector}' で {len(blocks)} ブロック取得")
-                for block in blocks:
-                    text = block.inner_text() or ""
-                    for seller in AMAZON_TARGET_SELLERS:
-                        if seller in text and result[seller] is None:
-                            date_text = _find_delivery_text(text)
-                            if date_text:
-                                result[seller] = date_text
-                                print(f"  {seller}: {date_text}")
-                found_blocks = True
-                break
-
-        # フォールバック：ページ全体テキストから前後行で解析
-        if not found_blocks or all(v is None for v in result.values()):
-            print("フォールバック: ページ全体テキストから解析")
-            full_text = page.inner_text("body")
-            lines = full_text.split("\n")
-            for i, line in enumerate(lines):
-                for seller in AMAZON_TARGET_SELLERS:
-                    if seller in line and result[seller] is None:
-                        context_lines = lines[max(0, i - 2):i + 8]
-                        for ctx in context_lines:
-                            date_text = _find_delivery_text(ctx)
-                            if date_text:
-                                result[seller] = date_text
-                                print(f"  {seller}: {date_text} (フォールバック)")
-                                break
-
-        browser.close()
-
-    return result
-
-
-def _find_delivery_text(text: str) -> str | None:
-    """テキストから配送日を含む行を抽出する"""
-    for line in text.split("\n"):
-        line = line.strip()
-        if line and re.search(r"(Arrives?|Delivers?|Ships?|Get it)", line, re.IGNORECASE):
-            return line
-    return None
-
-
-def _format_delivery_line(label: str, raw_text: str | None) -> str:
-    """配送日テキストを 'LABEL - Month D - Month D ( X - Y days )' 形式にフォーマット"""
-    if not raw_text:
-        return f"{label} - N/A"
-
-    m = re.search(r'(\w+)\s+(\d+)\s*[-–]\s*(?:(\w+)\s+)?(\d+)', raw_text)
-    if not m:
-        return f"{label} - {raw_text}"
-
-    month1_str, day1_str, month2_str, day2_str = m.groups()
-    month1 = MONTHS.get(month1_str)
-    month2 = MONTHS.get(month2_str) if month2_str else month1
-
-    if not month1 or not month2:
-        return f"{label} - {raw_text}"
-
-    today_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    year = today_dt.year
-
-    try:
-        date1 = datetime(year, month1, int(day1_str))
-        date2 = datetime(year, month2, int(day2_str))
-
-        if date1 < today_dt:
-            date1 = date1.replace(year=year + 1)
-        if date2 < date1:
-            date2 = date2.replace(year=date2.year + 1)
-
-        # 今日を1日目として計算
-        days1 = (date1 - today_dt).days + 1
-        days2 = (date2 - today_dt).days + 1
-
-        if month2_str:
-            date_range = f"{month1_str} {day1_str} - {month2_str} {day2_str}"
-        else:
-            date_range = f"{month1_str} {day1_str} - {month1_str} {day2_str}"
-
-        return f"{label} - {date_range} ( {days1} - {days2} days )"
-    except ValueError:
-        return f"{label} - {raw_text}"
-
-
-def send_to_chatwork(delivery_info: dict | None = None):
+def send_to_chatwork():
     """Chatworkにメッセージ＋画像を送信する"""
-    la_raw = delivery_info.get("Shop LA!") if delivery_info else None
-    ca_raw = delivery_info.get("カリフォルニアマート") if delivery_info else None
-
-    la_line = _format_delivery_line("LA", la_raw)
-    ca_line = _format_delivery_line("CA", ca_raw)
-
-    message = f"Today's Rate:　{today}\n{la_line}\n{ca_line}"
+    message = f"Today's Sales : {today}"
 
     headers = {"X-ChatWorkToken": CW_TOKEN}
 
@@ -325,28 +171,23 @@ def send_to_chatwork(delivery_info: dict | None = None):
     else:
         print(f"メッセージ送信失敗: {msg_response.text}")
 
+    # ファイル（スクリーンショット）送信
     file_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/files"
-
-    # 売上スクリーンショット送信
     with open(screenshot_path, "rb") as f:
-        res = requests.post(
+        file_response = requests.post(
             file_url,
             headers=headers,
             files={"file": (screenshot_path, f, "image/png")},
             data={"message": ""},
         )
-    if res.status_code == 200:
-        print("売上スクリーンショットを送信しました")
+    if file_response.status_code == 200:
+        print("スクリーンショットを送信しました")
     else:
-        print(f"売上ファイル送信失敗: {res.text}")
+        print(f"ファイル送信失敗: {file_response.text}")
 
 
 if __name__ == "__main__":
     print(f"=== 売上スクリーンショット送信 {today} ===")
     take_screenshot()
-
-    print(f"\n=== Amazon配送予定日チェック {today} ===")
-    delivery_info = check_amazon_delivery()
-
-    send_to_chatwork(delivery_info)
+    send_to_chatwork()
     print("=== 完了 ===")
