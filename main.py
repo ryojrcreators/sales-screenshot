@@ -193,22 +193,32 @@ def check_amazon_delivery() -> dict:
         page = context.new_page()
         stealth_sync(page)
 
-        url = f"https://www.amazon.com/gp/offer-listing/{AMAZON_ASIN}/"
-        print(f"Amazonオファーページを開いています: {url}")
+        url = f"https://www.amazon.com/dp/{AMAZON_ASIN}"
+        print(f"Amazon商品ページを開いています: {url}")
         try:
             page.goto(url, wait_until="networkidle", timeout=30000)
         except Exception as e:
             print(f"ページ読み込みエラー: {e}")
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(2000)
 
-        # デバッグ：ページタイトルと冒頭テキストをログ出力
         print(f"  ページタイトル: {page.title()}")
         print(f"  URL: {page.url}")
+
+        # 「See all buying options」ボタンをクリックしてオファー一覧を開く
+        try:
+            btn = page.locator("a:has-text('See all buying options'), a:has-text('buying options'), span:has-text('buying options')").first
+            if btn.count() > 0:
+                btn.click()
+                page.wait_for_timeout(2000)
+                print("  buying optionsパネルを開きました")
+        except Exception as e:
+            print(f"  buying optionsボタン操作エラー: {e}")
+
         page.screenshot(path=f"amazon_debug_{today}.png", full_page=True)
 
-        # オファーブロックを複数のセレクタで試みる
+        # AODパネル内のオファーブロックを検索
         found_blocks = False
-        for selector in ["div.olpOffer", "#aod-offer", "[id^='aod-offer-']"]:
+        for selector in ["#aod-offer", "[id^='aod-offer-']", "div.aod-offer", "#aod-offer-list"]:
             blocks = page.locator(selector).all()
             if blocks:
                 print(f"セレクタ '{selector}' で {len(blocks)} ブロック取得")
