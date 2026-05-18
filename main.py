@@ -201,6 +201,11 @@ def check_amazon_delivery() -> dict:
             print(f"ページ読み込みエラー: {e}")
         page.wait_for_timeout(3000)
 
+        # デバッグ：ページタイトルと冒頭テキストをログ出力
+        print(f"  ページタイトル: {page.title()}")
+        print(f"  URL: {page.url}")
+        page.screenshot(path=f"amazon_debug_{today}.png", full_page=True)
+
         # オファーブロックを複数のセレクタで試みる
         found_blocks = False
         for selector in ["div.olpOffer", "#aod-offer", "[id^='aod-offer-']"]:
