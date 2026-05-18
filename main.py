@@ -102,10 +102,14 @@ def take_screenshot():
         page.wait_for_timeout(2000)
 
         # ===== 表部分だけスクリーンショット =====
-        table = page.locator("table").first
-        box = table.bounding_box()
+        # ページ上の全テーブルから面積が最大のものを選ぶ（レイアウト用の細い要素を除外）
+        table = _find_largest_table(page)
+        box = table.bounding_box() if table else None
+        print(f"対象テーブルのbounding_box: {box}")
 
         try:
+            if table is None:
+                raise RuntimeError("テーブルが見つかりませんでした")
             # Playwright がスケールを自動処理して表だけ撮影
             table.screenshot(path=screenshot_path)
             print(f"テーブルのスクリーンショットを保存しました: {screenshot_path}")
@@ -117,6 +121,21 @@ def take_screenshot():
             _crop_table(full_path, box)
 
         browser.close()
+
+
+def _find_largest_table(page):
+    """ページ上の全テーブルから面積最大のものを返す"""
+    tables = page.locator("table").all()
+    best, best_area = None, 0
+    for t in tables:
+        box = t.bounding_box()
+        if box:
+            area = box["width"] * box["height"]
+            print(f"  table: {box['width']:.0f}x{box['height']:.0f} (area={area:.0f})")
+            if area > best_area:
+                best_area = area
+                best = t
+    return best
 
 
 def _crop_table(full_path: str, box: dict | None) -> None:
