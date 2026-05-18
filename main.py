@@ -12,11 +12,9 @@ DOMAIN = "app.jrcreators.com"
 LOGIN_ID_1 = os.environ["LOGIN_ID_1"]
 LOGIN_PASS_1 = os.environ["LOGIN_PASS_1"]
 
-# 特殊文字をURLエンコード
 LOGIN_ID_1_ENC = quote(LOGIN_ID_1, safe="")
 LOGIN_PASS_1_ENC = quote(LOGIN_PASS_1, safe="")
 
-# Basic認証をURLに埋め込む
 LOGIN_URL = f"https://{LOGIN_ID_1_ENC}:{LOGIN_PASS_1_ENC}@{DOMAIN}/"
 SALES_URL = f"https://{LOGIN_ID_1_ENC}:{LOGIN_PASS_1_ENC}@{DOMAIN}/sales/report"
 
@@ -30,20 +28,28 @@ CW_ROOM_ID = os.environ["CW_ROOM_ID"]
 
 # ===== スクリーンショット保存パス =====
 today = datetime.now().strftime("%Y-%m-%d")
-full_page_path = f"full_page_{today}.png"
 screenshot_path = f"screenshot_{today}.png"
+
+DEVICE_SCALE_FACTOR = 2
 
 
 def take_screenshot():
-    """売上画面のスクリーンショットを撮る"""
+    """売上表のスクリーンショットを撮る"""
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            # GitHub Actions の headless Chromium で背景色を確実に再現するため sRGB を強制
+            args=["--force-color-profile=srgb"],
+        )
 
-        # 通常のChromeに偽装
         context = browser.new_context(
             viewport={"width": 1800, "height": 900},
-            device_scale_factor=2,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            device_scale_factor=DEVICE_SCALE_FACTOR,
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
         )
         page = context.new_page()
 
@@ -68,44 +74,79 @@ def take_screenshot():
         print("売上画面に移動しています...")
         page.goto(SALES_URL, wait_until="networkidle")
 
-        # JavaScriptによる色付けが完了するまで待つ
+        # テーブル行が描画されるまで待つ
         try:
-            page.wait_for_function("document.querySelectorAll('table tr').length > 5")
+            page.wait_for_function(
+                "document.querySelectorAll('table tr').length > 5",
+                timeout=15000,
+            )
         except Exception:
             pass
-        page.wait_for_timeout(5000)
 
-        # ページ全体を撮影
-        page.screenshot(path=full_page_path, full_page=True)
-        print(f"ページ全体のスクリーンショットを保存しました: {full_page_path}")
+        # JavaScriptによる背景色の適用が完了するまで待つ
+        try:
+            page.wait_for_function(
+                """() => {
+                    const cells = document.querySelectorAll('table td, table th');
+                    return Array.from(cells).some(cell => {
+                        const bg = window.getComputedStyle(cell).backgroundColor;
+                        return bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
+                    });
+                }""",
+                timeout=10000,
+            )
+        except Exception:
+            pass
+
+        # 色付けが確定するまで追加待機
+        page.wait_for_timeout(2000)
+
+        # ===== 表部分だけスクリーンショット =====
+        table = page.locator("table").first
+        box = table.bounding_box()
+
+        try:
+            # Playwright がスケールを自動処理して表だけ撮影
+            table.screenshot(path=screenshot_path)
+            print(f"テーブルのスクリーンショットを保存しました: {screenshot_path}")
+        except Exception as e:
+            # フォールバック：ページ全体を撮影してから PIL で切り取り
+            print(f"テーブル直接撮影失敗、全体から切り取ります: {e}")
+            full_path = f"full_page_{today}.png"
+            page.screenshot(path=full_path, full_page=True)
+            _crop_table(full_path, box)
 
         browser.close()
 
-    # ===== PILで表部分を切り取り =====
-    img = Image.open(full_page_path)
-    img_width, img_height = img.size
-    print(f"画像サイズ: {img_width} x {img_height}")
 
-    # ページ全体をそのまま送信（切り取りなし）
-    import shutil
-    shutil.copy(full_page_path, screenshot_path)
-    print(f"スクリーンショット完了: {screenshot_path}")
+def _crop_table(full_path: str, box: dict | None) -> None:
+    """PIL でページ全体画像からテーブル部分を切り取る（フォールバック用）"""
+    if box:
+        scale = DEVICE_SCALE_FACTOR
+        img = Image.open(full_path)
+        cropped = img.crop((
+            int(box["x"] * scale),
+            int(box["y"] * scale),
+            int((box["x"] + box["width"]) * scale),
+            int((box["y"] + box["height"]) * scale),
+        ))
+        cropped.save(screenshot_path)
+        print(f"テーブル部分を切り取りました: {screenshot_path}")
+    else:
+        import shutil
+        shutil.copy(full_path, screenshot_path)
+        print("テーブルが見つからなかったためページ全体を使用します")
 
 
 def send_to_chatwork():
     """Chatworkにメッセージ＋画像を送信する"""
-    message = f"本日の売上\n📅 {today}"
+    message = f"本日の売上\n{today}"
 
     headers = {"X-ChatWorkToken": CW_TOKEN}
 
     # メッセージ送信
     msg_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/messages"
-    msg_response = requests.post(
-        msg_url,
-        headers=headers,
-        data={"body": message}
-    )
-
+    msg_response = requests.post(msg_url, headers=headers, data={"body": message})
     if msg_response.status_code == 200:
         print("メッセージを送信しました")
     else:
@@ -113,15 +154,13 @@ def send_to_chatwork():
 
     # ファイル（スクリーンショット）送信
     file_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/files"
-
     with open(screenshot_path, "rb") as f:
         file_response = requests.post(
             file_url,
             headers=headers,
             files={"file": (screenshot_path, f, "image/png")},
-            data={"message": ""}
+            data={"message": ""},
         )
-
     if file_response.status_code == 200:
         print("スクリーンショットを送信しました")
     else:
