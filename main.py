@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright
+from playwright_stealth import stealth_sync
 from PIL import Image
 
 # ===== 設定（環境変数から読み込み） =====
@@ -190,6 +191,7 @@ def check_amazon_delivery() -> dict:
             extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
         )
         page = context.new_page()
+        stealth_sync(page)
 
         url = f"https://www.amazon.com/gp/offer-listing/{AMAZON_ASIN}/"
         print(f"Amazonオファーページを開いています: {url}")
