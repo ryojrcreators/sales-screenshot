@@ -29,6 +29,7 @@ CW_ROOM_ID = os.environ["CW_ROOM_ID"]
 # ===== スクリーンショット保存パス =====
 today = datetime.now().strftime("%Y-%m-%d")
 screenshot_path = f"screenshot_{today}.png"
+jpeg_path = f"screenshot_{today}.jpg"
 
 DEVICE_SCALE_FACTOR = 2
 
@@ -163,22 +164,21 @@ def send_to_chatwork():
 
     headers = {"X-ChatWorkToken": CW_TOKEN}
 
-    # 画像をリサイズ（幅1800px以上なら半分に縮小してプレビュー表示を改善）
-    img = Image.open(screenshot_path)
+    # PNG → JPEG変換（リサイズ込み）
+    img = Image.open(screenshot_path).convert("RGB")
     if img.width > 1800:
-        new_width = img.width // 2
-        new_height = img.height // 2
-        img = img.resize((new_width, new_height), Image.LANCZOS)
-        img.save(screenshot_path)
-        print(f"画像をリサイズしました: {new_width}x{new_height}")
+        img = img.resize((img.width // 2, img.height // 2), Image.LANCZOS)
+        print(f"画像をリサイズしました: {img.width}x{img.height}")
+    img.save(jpeg_path, "JPEG", quality=90)
+    print(f"JPEGに変換しました: {jpeg_path}")
 
     # メッセージ＋ファイル（スクリーンショット）を1つの投稿で送信
     file_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/files"
-    with open(screenshot_path, "rb") as f:
+    with open(jpeg_path, "rb") as f:
         file_response = requests.post(
             file_url,
             headers=headers,
-            files={"file": (screenshot_path, f, "image/png")},
+            files={"file": (jpeg_path, f, "image/jpeg")},
             data={"message": message},
         )
     if file_response.status_code == 200:
