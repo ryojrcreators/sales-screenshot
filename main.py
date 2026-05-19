@@ -159,7 +159,7 @@ def _crop_table(full_path: str, box: dict | None) -> None:
 
 def send_to_chatwork():
     """Chatworkにメッセージ＋画像を送信する"""
-    message = f"Today's Sales : {today}"
+    message = f"本日の売上です！\nToday's Sales : {today}"
 
     headers = {"X-ChatWorkToken": CW_TOKEN}
 
