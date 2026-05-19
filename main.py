@@ -163,25 +163,17 @@ def send_to_chatwork():
 
     headers = {"X-ChatWorkToken": CW_TOKEN}
 
-    # メッセージ送信
-    msg_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/messages"
-    msg_response = requests.post(msg_url, headers=headers, data={"body": message})
-    if msg_response.status_code == 200:
-        print("メッセージを送信しました")
-    else:
-        print(f"メッセージ送信失敗: {msg_response.text}")
-
-    # ファイル（スクリーンショット）送信
+    # メッセージ＋ファイル（スクリーンショット）を1つの投稿で送信
     file_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/files"
     with open(screenshot_path, "rb") as f:
         file_response = requests.post(
             file_url,
             headers=headers,
             files={"file": (screenshot_path, f, "image/png")},
-            data={"message": ""},
+            data={"message": message},
         )
     if file_response.status_code == 200:
-        print("スクリーンショットを送信しました")
+        print("メッセージ＋スクリーンショットを送信しました")
     else:
         print(f"ファイル送信失敗: {file_response.text}")
 
