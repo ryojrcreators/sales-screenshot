@@ -2,8 +2,8 @@ name: 毎朝売上スクリーンショット送信
 
 on:
   schedule:
-    # LA時間（PDT）の朝10時 = UTC 17:00
-    - cron: '0 17 * * *'
+    # LA時間（PDT）の朝9時30分 = UTC 16:30
+    - cron: '30 16 * * *'
   workflow_dispatch:  # 手動実行ボタン（テスト用）
 
 jobs:
