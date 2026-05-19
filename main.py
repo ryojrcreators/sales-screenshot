@@ -163,6 +163,15 @@ def send_to_chatwork():
 
     headers = {"X-ChatWorkToken": CW_TOKEN}
 
+    # 画像をリサイズ（幅1800px以上なら半分に縮小してプレビュー表示を改善）
+    img = Image.open(screenshot_path)
+    if img.width > 1800:
+        new_width = img.width // 2
+        new_height = img.height // 2
+        img = img.resize((new_width, new_height), Image.LANCZOS)
+        img.save(screenshot_path)
+        print(f"画像をリサイズしました: {new_width}x{new_height}")
+
     # メッセージ＋ファイル（スクリーンショット）を1つの投稿で送信
     file_url = f"https://api.chatwork.com/v2/rooms/{CW_ROOM_ID}/files"
     with open(screenshot_path, "rb") as f:
