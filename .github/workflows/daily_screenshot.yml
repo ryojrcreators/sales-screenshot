@@ -81,7 +81,7 @@ jobs:
           CW_TOKEN: ${{ secrets.CW_TOKEN }}
           CW_ROOM_ID: ${{ secrets.CW_ROOM_ID }}
         run: |
+          MESSAGE=$'[To:2618849]Ryo Higuchiさん\n売上スクリーンショットの自動送信が5回リトライしても失敗しました。GitHub Actionsのログを確認してください。'
           curl -s -X POST "https://api.chatwork.com/v2/rooms/${CW_ROOM_ID}/messages" \
             -H "X-ChatWorkToken: ${CW_TOKEN}" \
-            --data-urlencode "body=[To:2618849]Ryo Higuchiさん
-売上スクリーンショットの自動送信が5回リトライしても失敗しました。GitHub Actionsのログを確認してください。"
+            --data-urlencode "body=${MESSAGE}"
