@@ -18,26 +18,42 @@ jobs:
 
       - name: 日本語フォントをインストール
         run: |
-          sudo apt-get update
-          sudo apt-get install -y fonts-noto-cjk
+          for i in 1 2 3 4 5; do
+            sudo apt-get update && sudo apt-get install -y fonts-noto-cjk && break
+            echo "失敗しました（${i}回目）。10秒待って再試行します..."
+            sleep 10
+            if [ "$i" -eq 5 ]; then
+              echo "5回試しても失敗したため、あきらめます。"
+              exit 1
+            fi
+          done
 
       - name: ライブラリをインストール
         run: |
-          pip install -r requirements.txt
-          playwright install chromium
-          playwright install-deps chromium || sudo apt-get install -y \
-            libasound2t64 \
-            libatk1.0-0 \
-            libatk-bridge2.0-0 \
-            libcups2 \
-            libdrm2 \
-            libgbm1 \
-            libgtk-3-0 \
-            libxcomposite1 \
-            libxdamage1 \
-            libxfixes3 \
-            libxrandr2 \
-            libxshmfence1
+          for i in 1 2 3 4 5; do
+            pip install -r requirements.txt \
+              && playwright install chromium \
+              && (playwright install-deps chromium || sudo apt-get install -y \
+                   libasound2t64 \
+                   libatk1.0-0 \
+                   libatk-bridge2.0-0 \
+                   libcups2 \
+                   libdrm2 \
+                   libgbm1 \
+                   libgtk-3-0 \
+                   libxcomposite1 \
+                   libxdamage1 \
+                   libxfixes3 \
+                   libxrandr2 \
+                   libxshmfence1) \
+              && break
+            echo "失敗しました（${i}回目）。10秒待って再試行します..."
+            sleep 10
+            if [ "$i" -eq 5 ]; then
+              echo "5回試しても失敗したため、あきらめます。"
+              exit 1
+            fi
+          done
 
       - name: スクリーンショット撮影 & Chatwork送信
         env:
@@ -48,4 +64,24 @@ jobs:
           LOGIN_PASS_2: ${{ secrets.LOGIN_PASS_2 }}
           CW_TOKEN: ${{ secrets.CW_TOKEN }}
           CW_ROOM_ID: ${{ secrets.CW_ROOM_ID }}
-        run: python main.py
+        run: |
+          for i in 1 2 3 4 5; do
+            python main.py && break
+            echo "失敗しました（${i}回目）。10秒待って再試行します..."
+            sleep 10
+            if [ "$i" -eq 5 ]; then
+              echo "5回試しても失敗したため、あきらめます。"
+              exit 1
+            fi
+          done
+
+      - name: 失敗時にChatworkへ通知
+        if: failure()
+        env:
+          CW_TOKEN: ${{ secrets.CW_TOKEN }}
+          CW_ROOM_ID: ${{ secrets.CW_ROOM_ID }}
+        run: |
+          curl -s -X POST "https://api.chatwork.com/v2/rooms/${CW_ROOM_ID}/messages" \
+            -H "X-ChatWorkToken: ${CW_TOKEN}" \
+            --data-urlencode "body=[To:2618849]Ryo Higuchiさん
+売上スクリーンショットの自動送信が5回リトライしても失敗しました。GitHub Actionsのログを確認してください。"
