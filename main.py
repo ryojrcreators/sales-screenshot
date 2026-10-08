@@ -181,5 +181,8 @@ def send_to_chatwork():
 if __name__ == "__main__":
     print(f"=== 売上スクリーンショット送信 {today} ===")
     take_screenshot()
-    send_to_chatwork()
+    if os.environ.get("DRY_RUN", "").lower() == "true":
+        print("DRY_RUN のため Chatwork 送信をスキップします")
+    else:
+        send_to_chatwork()
     print("=== 完了 ===")
