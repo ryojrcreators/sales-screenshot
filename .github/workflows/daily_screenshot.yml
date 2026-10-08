@@ -17,11 +17,11 @@ jobs:
           python-version: '3.11'
 
       - name: 日本語フォントをインストール
-        timeout-minutes: 20
+        timeout-minutes: 8
         run: |
           for i in 1 2 3 4 5; do
-            timeout 180 sh -c 'sudo apt-get update && sudo apt-get install -y fonts-noto-cjk' && break
-            echo "失敗または3分以上応答がありませんでした（${i}回目）。10秒待って再試行します..."
+            timeout 60 sh -c 'sudo apt-get update && sudo apt-get install -y fonts-noto-cjk' && break
+            echo "失敗または60秒以上応答がありませんでした（${i}回目）。10秒待って再試行します..."
             sudo dpkg --configure -a || true
             sleep 10
             if [ "$i" -eq 5 ]; then
@@ -31,10 +31,10 @@ jobs:
           done
 
       - name: ライブラリをインストール
-        timeout-minutes: 30
+        timeout-minutes: 15
         run: |
           for i in 1 2 3 4 5; do
-            timeout 300 sh -c 'pip install -r requirements.txt \
+            timeout 120 sh -c 'pip install -r requirements.txt \
               && playwright install chromium \
               && (playwright install-deps chromium || sudo apt-get install -y \
                    libasound2t64 \
@@ -50,7 +50,7 @@ jobs:
                    libxrandr2 \
                    libxshmfence1)' \
               && break
-            echo "失敗または5分以上応答がありませんでした（${i}回目）。10秒待って再試行します..."
+            echo "失敗または2分以上応答がありませんでした（${i}回目）。10秒待って再試行します..."
             sudo dpkg --configure -a || true
             sleep 10
             if [ "$i" -eq 5 ]; then
@@ -60,7 +60,7 @@ jobs:
           done
 
       - name: スクリーンショット撮影 & Chatwork送信
-        timeout-minutes: 30
+        timeout-minutes: 15
         env:
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
           LOGIN_ID_1: ${{ secrets.LOGIN_ID_1 }}
@@ -71,8 +71,8 @@ jobs:
           CW_ROOM_ID: ${{ secrets.CW_ROOM_ID }}
         run: |
           for i in 1 2 3 4 5; do
-            timeout 300 python main.py && break
-            echo "失敗または5分以上応答がありませんでした（${i}回目）。10秒待って再試行します..."
+            timeout 120 python main.py && break
+            echo "失敗または2分以上応答がありませんでした（${i}回目）。10秒待って再試行します..."
             sleep 10
             if [ "$i" -eq 5 ]; then
               echo "5回試しても失敗したため、あきらめます。"
